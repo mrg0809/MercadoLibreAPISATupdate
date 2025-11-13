@@ -2,6 +2,25 @@
 
 Sistema web para gestionar información SAT de publicaciones de Mercado Libre.
 
+## ⚡ Inicio Rápido
+
+```bash
+# 1. Clonar e instalar
+git clone https://github.com/mrg0809/MercadoLibreAPISATupdate.git
+cd MercadoLibreAPISATupdate
+pip install -r requirements.txt
+
+# 2. Configurar credenciales
+cp .env.example .env
+# Edita .env con tu ACCESS_TOKEN y USER_ID
+
+# 3. Iniciar el servidor
+python main.py
+
+# 4. Abrir en navegador
+# http://localhost:8000
+```
+
 ## 🎯 Características
 
 - **Descargar publicaciones**: Obtén todas tus publicaciones en formato CSV o XLSX con columnas SAT listas para editar
