@@ -33,12 +33,32 @@ class MeliClient:
             "Content-Type": "application/json"
         }
     
+    def validate_token(self) -> bool:
+        """
+        Validate the access token by making a test request
+        
+        Returns:
+            True if token is valid, False otherwise
+        """
+        try:
+            url = f"{BASE_URL}/users/me"
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Token validation failed: {e}")
+            return False
+    
     def get_user_items(self) -> List[str]:
         """
         Get all item IDs for the user
         
         Returns:
             List of item IDs
+            
+        Raises:
+            PermissionError: If the access token is invalid or doesn't have required permissions
+            requests.exceptions.RequestException: For other API errors
         """
         try:
             url = f"{BASE_URL}/users/{self.user_id}/items/search"
@@ -52,7 +72,27 @@ class MeliClient:
                     "limit": limit
                 }
                 
-                response = requests.get(url, headers=self.headers, params=params)
+                response = requests.get(url, headers=self.headers, params=params, timeout=30)
+                
+                # Handle specific error cases
+                if response.status_code == 403:
+                    error_msg = (
+                        "Access forbidden (403). Please check:\n"
+                        "1. Your ACCESS_TOKEN is valid and not expired\n"
+                        "2. The token has the required scopes (read, write, offline_access)\n"
+                        "3. The USER_ID matches the authenticated user\n"
+                        "You can generate a new token at: https://developers.mercadolibre.com/"
+                    )
+                    logger.error(error_msg)
+                    raise PermissionError(error_msg)
+                elif response.status_code == 401:
+                    error_msg = (
+                        "Authentication failed (401). Your ACCESS_TOKEN may be invalid or expired.\n"
+                        "Please generate a new token at: https://developers.mercadolibre.com/"
+                    )
+                    logger.error(error_msg)
+                    raise PermissionError(error_msg)
+                
                 response.raise_for_status()
                 
                 data = response.json()
@@ -76,6 +116,9 @@ class MeliClient:
             logger.info(f"Total items retrieved: {len(all_items)}")
             return all_items
         
+        except PermissionError:
+            # Re-raise PermissionError as-is
+            raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Error getting user items: {e}")
             raise
@@ -92,7 +135,7 @@ class MeliClient:
         """
         try:
             url = f"{BASE_URL}/items/{item_id}"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, timeout=30)
             response.raise_for_status()
             
             return response.json()
@@ -146,7 +189,7 @@ class MeliClient:
             if 'seller_custom_field' in sat_data:
                 payload['seller_custom_field'] = sat_data['seller_custom_field']
             
-            response = requests.put(url, headers=self.headers, json=payload)
+            response = requests.put(url, headers=self.headers, json=payload, timeout=30)
             response.raise_for_status()
             
             logger.info(f"Successfully updated item {item_id}")
