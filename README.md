@@ -78,8 +78,179 @@ USER_ID=tu_user_id_de_mercadolibre
 ```
 
 **¿Cómo obtener tus credenciales?**
-- ACCESS_TOKEN: Ve a https://developers.mercadolibre.com/ y genera un token de acceso
-- USER_ID: Tu ID de usuario de Mercado Libre (puedes obtenerlo desde tu perfil o la API)
+Ver la sección de [Autenticación con OAuth](#-autenticación-con-oauth) para instrucciones detalladas paso a paso.
+
+## 🔐 Autenticación con OAuth
+
+### Introducción
+
+MercadoLibre utiliza OAuth 2.0 para autenticación. Este proceso permite que tu aplicación acceda a la API de forma segura sin manejar directamente las credenciales del usuario.
+
+### Paso 1: Crear una Aplicación en MercadoLibre
+
+1. **Ir al Portal de Desarrolladores**
+   - Visita: https://developers.mercadolibre.com/
+   - Inicia sesión con tu cuenta de Mercado Libre
+
+2. **Crear una Nueva Aplicación**
+   - Haz clic en "Mis aplicaciones" o "My applications"
+   - Haz clic en "Crear nueva aplicación" o "Create new application"
+
+3. **Completar el Formulario de Registro**
+   - **Nombre de la aplicación**: `Meli SAT Manager` (o el nombre que prefieras)
+   - **Descripción corta**: `Sistema para gestionar información SAT`
+   - **Descripción larga**: Breve descripción de tu aplicación
+   - **URL de callback/redirect**: Para desarrollo local, usa:
+     ```
+     http://localhost:8000/auth/callback
+     ```
+     O simplemente: `http://localhost:8000`
+   - **Sitio web**: Puedes usar `http://localhost:8000` para desarrollo
+
+4. **Obtener las Credenciales**
+   Después de crear la aplicación, obtendrás:
+   - **App ID** (Client ID)
+   - **Secret Key** (Client Secret)
+   
+   ⚠️ **Guarda el Secret Key de forma segura** - No lo compartas ni lo subas a repositorios públicos
+
+### Paso 2: Flujo de Autenticación OAuth para Localhost
+
+Para una aplicación local/desarrollo, hay dos opciones:
+
+#### Opción A: Test User Token (Recomendado para Desarrollo Local)
+
+Esta es la forma más sencilla para desarrollo y testing local:
+
+1. **Generar Token de Prueba**
+   - Ve a: https://developers.mercadolibre.com/
+   - Entra a tu aplicación
+   - Busca la sección "Credenciales de prueba" o "Test credentials"
+   - Haz clic en "Generar token de prueba" o "Generate test token"
+   - Selecciona los **scopes necesarios**:
+     - ✅ `read` - Para leer tus publicaciones
+     - ✅ `write` - Para actualizar campos SAT
+     - ✅ `offline_access` - Para mantener el acceso por más tiempo
+
+2. **Copiar el Access Token**
+   - El token generado será algo como: `APP_USR-1234567890123456-111111-abcdef1234567890abcdef1234567890-123456789`
+   - Este token es válido por 6 horas aproximadamente
+
+3. **Obtener tu USER_ID**
+   Puedes obtenerlo de dos formas:
+   
+   **Opción 1 - Desde la API:**
+   ```bash
+   curl -X GET \
+     'https://api.mercadolibre.com/users/me' \
+     -H 'Authorization: Bearer TU_ACCESS_TOKEN'
+   ```
+   
+   **Opción 2 - Desde el portal:**
+   - El USER_ID aparece en el portal de desarrolladores bajo tu perfil
+
+4. **Actualizar el archivo .env**
+   ```env
+   ACCESS_TOKEN=APP_USR-1234567890123456-111111-abcdef1234567890abcdef1234567890-123456789
+   USER_ID=123456789
+   ```
+
+⚠️ **Nota sobre Expiración**: Los tokens de prueba expiran. Cuando veas errores 403 o 401, simplemente genera un nuevo token siguiendo estos mismos pasos.
+
+#### Opción B: Flujo OAuth Completo (Para Producción)
+
+Si necesitas un token de larga duración o para producción, sigue este flujo:
+
+1. **Construir la URL de Autorización**
+   ```
+   https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=TU_APP_ID&redirect_uri=http://localhost:8000/auth/callback&state=random_string
+   ```
+   
+   Parámetros:
+   - `client_id`: Tu App ID
+   - `redirect_uri`: Debe coincidir exactamente con la URL registrada
+   - `state`: String aleatorio para seguridad (opcional para desarrollo)
+
+2. **Autorizar la Aplicación**
+   - Abre la URL en tu navegador
+   - Inicia sesión si es necesario
+   - Autoriza los permisos solicitados
+   - Serás redirigido a: `http://localhost:8000/auth/callback?code=TG-xxxxx&state=random_string`
+
+3. **Intercambiar el Code por un Access Token**
+   
+   Ejecuta este comando (reemplaza los valores):
+   ```bash
+   curl -X POST \
+     'https://api.mercadolibre.com/oauth/token' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "grant_type": "authorization_code",
+       "client_id": "TU_APP_ID",
+       "client_secret": "TU_SECRET_KEY",
+       "code": "TG-xxxxx",
+       "redirect_uri": "http://localhost:8000/auth/callback"
+     }'
+   ```
+   
+   Respuesta:
+   ```json
+   {
+     "access_token": "APP_USR-1234567890123456-111111-abc...",
+     "token_type": "Bearer",
+     "expires_in": 21600,
+     "scope": "read write offline_access",
+     "user_id": 123456789,
+     "refresh_token": "TG-xxxxx..."
+   }
+   ```
+
+4. **Guardar las Credenciales**
+   ```env
+   ACCESS_TOKEN=APP_USR-1234567890123456-111111-abc...
+   USER_ID=123456789
+   REFRESH_TOKEN=TG-xxxxx...
+   ```
+
+5. **Refrescar el Token (cuando expire)**
+   ```bash
+   curl -X POST \
+     'https://api.mercadolibre.com/oauth/token' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "grant_type": "refresh_token",
+       "client_id": "TU_APP_ID",
+       "client_secret": "TU_SECRET_KEY",
+       "refresh_token": "TU_REFRESH_TOKEN"
+     }'
+   ```
+
+### Resumen: ¿Cuál Opción Elegir?
+
+| Escenario | Opción Recomendada |
+|-----------|-------------------|
+| Desarrollo local / Testing | **Opción A** - Test User Token |
+| Primera vez usando la API | **Opción A** - Test User Token |
+| Aplicación de producción | **Opción B** - Flujo OAuth Completo |
+| Necesitas auto-refresh | **Opción B** - Flujo OAuth Completo |
+
+### Notas Importantes
+
+1. **Callback en Localhost**: Para desarrollo local, el callback puede ser cualquier URL local como `http://localhost:8000`. No necesitas implementar la ruta `/auth/callback` si usas la Opción A (Test User Token).
+
+2. **Sin Callback Público**: No necesitas un servidor público ni dominio. Todo el proceso puede hacerse en localhost.
+
+3. **Expiración de Tokens**: 
+   - Los tokens de prueba expiran en ~6 horas
+   - Los tokens OAuth expiran en ~6 horas pero se pueden refrescar
+   - Usa `refresh_token` para obtener nuevos access tokens sin re-autorizar
+
+4. **Scopes Necesarios**:
+   - `read`: Para descargar publicaciones
+   - `write`: Para actualizar campos SAT
+   - `offline_access`: Para tokens de larga duración
+
+5. **Testing**: Usa la Opción A (Test User Token) para simplificar el desarrollo. Es la forma más rápida de empezar.
 
 ## 🎮 Uso
 
