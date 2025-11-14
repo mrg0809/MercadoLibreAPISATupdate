@@ -116,11 +116,58 @@ MercadoLibre utiliza OAuth 2.0 para autenticación. Este proceso permite que tu 
 
 ### Paso 2: Flujo de Autenticación OAuth para Localhost
 
-Para una aplicación local/desarrollo, hay dos opciones:
+Para una aplicación local/desarrollo, hay tres opciones:
 
-#### Opción A: Test User Token (Recomendado para Desarrollo Local)
+#### Opción A: Script PowerShell Automatizado (⭐ MÁS FÁCIL)
 
-Esta es la forma más sencilla para desarrollo y testing local:
+Esta es la forma **más simple y recomendada** para obtener tokens rápidamente:
+
+1. **Descargar el script**
+   - El script `get_ml_tokens.ps1` está incluido en el repositorio
+
+2. **Configurar el script**
+   - Abre `get_ml_tokens.ps1` en un editor de texto
+   - Reemplaza estos valores en la sección de CONFIGURACIÓN:
+     ```powershell
+     $APP_ID = "1234567890"  # Tu App ID de la aplicación
+     $CLIENT_SECRET = "AbCdEfGhIjKlMnOp"  # Tu Client Secret
+     $REDIRECT_URI = "https://google.com"  # Puedes dejarlo así
+     ```
+
+3. **Ejecutar el script**
+   ```powershell
+   # En PowerShell (Windows)
+   .\get_ml_tokens.ps1
+   ```
+
+4. **Seguir las instrucciones del script**
+   - El script mostrará una URL para autorizar
+   - Abrirás la URL en el navegador
+   - Autorizarás la aplicación
+   - Copiarás el código de la URL de redirección
+   - El script intercambiará el código por tokens
+
+5. **Obtener el archivo de tokens**
+   - El script generará `ml_tokens.txt` con:
+     ```
+     ACCESS_TOKEN=APP_USR-xxxx...
+     USER_ID=123456789
+     REFRESH_TOKEN=TG-xxxx...
+     ```
+
+6. **Copiar al archivo .env**
+   - Copia el contenido de `ml_tokens.txt` a tu archivo `.env`
+   - ¡Listo! La aplicación está configurada
+
+**Renovar tokens cuando expiren:**
+```powershell
+# Ejecuta este script para renovar tokens
+.\refresh_ml_tokens.ps1
+```
+
+#### Opción B: Test User Token (Manual)
+
+Esta es una forma simple para desarrollo y testing rápido:
 
 1. **Generar Token de Prueba**
    - Ve a: https://developers.mercadolibre.com/
@@ -157,7 +204,7 @@ Esta es la forma más sencilla para desarrollo y testing local:
 
 ⚠️ **Nota sobre Expiración**: Los tokens de prueba expiran. Cuando veas errores 403 o 401, simplemente genera un nuevo token siguiendo estos mismos pasos.
 
-#### Opción B: Flujo OAuth Completo (Para Producción)
+#### Opción C: Flujo OAuth Completo Manual (Para Producción)
 
 Si necesitas un token de larga duración o para producción, sigue este flujo:
 
@@ -229,28 +276,40 @@ Si necesitas un token de larga duración o para producción, sigue este flujo:
 
 | Escenario | Opción Recomendada |
 |-----------|-------------------|
-| Desarrollo local / Testing | **Opción A** - Test User Token |
-| Primera vez usando la API | **Opción A** - Test User Token |
-| Aplicación de producción | **Opción B** - Flujo OAuth Completo |
-| Necesitas auto-refresh | **Opción B** - Flujo OAuth Completo |
+| **Forma más fácil y rápida** | ⭐ **Opción A** - Script PowerShell |
+| Desarrollo local / Testing | **Opción A** o **Opción B** |
+| Primera vez usando la API | **Opción A** - Script PowerShell |
+| No tienes PowerShell | **Opción B** - Test User Token |
+| Aplicación de producción | **Opción C** - Flujo OAuth Completo |
+| Necesitas auto-refresh | **Opción A** o **Opción C** |
 
 ### Notas Importantes
 
-1. **Callback en Localhost**: Para desarrollo local, el callback puede ser cualquier URL local como `http://localhost:8000`. No necesitas implementar la ruta `/auth/callback` si usas la Opción A (Test User Token).
+1. **Scripts PowerShell Incluidos**: 
+   - `get_ml_tokens.ps1`: Obtiene tokens nuevos mediante OAuth
+   - `refresh_ml_tokens.ps1`: Renueva tokens cuando expiran
+   - Ambos generan archivos listos para copiar al .env
 
-2. **Sin Callback Público**: No necesitas un servidor público ni dominio. Todo el proceso puede hacerse en localhost.
+2. **Callback en Localhost**: Para desarrollo local, el callback puede ser cualquier URL como `https://google.com`. No necesitas implementar ninguna ruta en tu aplicación con la Opción A (Script PowerShell).
 
-3. **Expiración de Tokens**: 
+3. **Sin Callback Público**: No necesitas un servidor público ni dominio. Todo el proceso puede hacerse en localhost.
+
+4. **Expiración de Tokens**: 
    - Los tokens de prueba expiran en ~6 horas
    - Los tokens OAuth expiran en ~6 horas pero se pueden refrescar
-   - Usa `refresh_token` para obtener nuevos access tokens sin re-autorizar
+   - Usa `refresh_token` con el script `refresh_ml_tokens.ps1` para renovar
 
-4. **Scopes Necesarios**:
+5. **Scopes Necesarios**:
    - `read`: Para descargar publicaciones
    - `write`: Para actualizar campos SAT
-   - `offline_access`: Para tokens de larga duración
+   - `offline_access`: Para tokens de larga duración con refresh
 
-5. **Testing**: Usa la Opción A (Test User Token) para simplificar el desarrollo. Es la forma más rápida de empezar.
+6. **Archivo .env**: Con cualquier opción, necesitas copiar los siguientes valores al archivo `.env`:
+   ```env
+   ACCESS_TOKEN=APP_USR-xxxx...
+   USER_ID=123456789
+   REFRESH_TOKEN=TG-xxxx...  # Opcional pero recomendado
+   ```
 
 ## 🎮 Uso
 
