@@ -181,9 +181,37 @@ El archivo descargado incluye las siguientes columnas:
 - Verifica que el archivo `.env` existe en el directorio raíz
 - Asegúrate de que las variables estén correctamente definidas sin espacios
 
-### Error al descargar publicaciones
+### Error 403 Forbidden al descargar publicaciones
+Este error indica que el token de acceso no tiene los permisos necesarios o ha expirado. Solución:
+
+1. **Verifica que tu ACCESS_TOKEN sea válido**:
+   - Los tokens de MercadoLibre expiran después de cierto tiempo
+   - Genera un nuevo token en: https://developers.mercadolibre.com/
+
+2. **Asegúrate de que el token tenga los scopes necesarios**:
+   - `read` - Para leer tus publicaciones
+   - `write` - Para actualizar campos SAT
+   - `offline_access` - Para mantener el acceso
+
+3. **Verifica que el USER_ID sea correcto**:
+   - El USER_ID debe coincidir con el usuario autenticado del token
+   - Puedes verificar tu USER_ID en tu perfil de MercadoLibre
+
+4. **Regenera tu token**:
+   - Ve a https://developers.mercadolibre.com/
+   - Crea una nueva aplicación o usa una existente
+   - Genera un nuevo token con los scopes necesarios
+   - Actualiza el archivo `.env` con el nuevo token
+
+### Error 401 Unauthorized
+- Tu ACCESS_TOKEN es inválido o ha expirado
+- Genera un nuevo token en: https://developers.mercadolibre.com/
+- Actualiza el archivo `.env` con el nuevo token
+
+### Error al descargar publicaciones (otros errores)
 - Verifica que tu ACCESS_TOKEN sea válido y no haya expirado
 - Asegúrate de tener publicaciones activas en tu cuenta
+- Verifica tu conexión a Internet
 
 ### Error al subir archivo
 - Verifica que el archivo tenga las columnas requeridas: `id`, `ClaveProdServ`, `ClaveUnidad`, `Unidad_SAT`, `Descripción_SAT`
