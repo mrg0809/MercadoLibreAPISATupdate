@@ -78,8 +78,238 @@ USER_ID=tu_user_id_de_mercadolibre
 ```
 
 **¿Cómo obtener tus credenciales?**
-- ACCESS_TOKEN: Ve a https://developers.mercadolibre.com/ y genera un token de acceso
-- USER_ID: Tu ID de usuario de Mercado Libre (puedes obtenerlo desde tu perfil o la API)
+Ver la sección de [Autenticación con OAuth](#-autenticación-con-oauth) para instrucciones detalladas paso a paso.
+
+## 🔐 Autenticación con OAuth
+
+### Introducción
+
+MercadoLibre utiliza OAuth 2.0 para autenticación. Este proceso permite que tu aplicación acceda a la API de forma segura sin manejar directamente las credenciales del usuario.
+
+### Paso 1: Crear una Aplicación en MercadoLibre
+
+1. **Ir al Portal de Desarrolladores**
+   - Visita: https://developers.mercadolibre.com/
+   - Inicia sesión con tu cuenta de Mercado Libre
+
+2. **Crear una Nueva Aplicación**
+   - Haz clic en "Mis aplicaciones" o "My applications"
+   - Haz clic en "Crear nueva aplicación" o "Create new application"
+
+3. **Completar el Formulario de Registro**
+   - **Nombre de la aplicación**: `Meli SAT Manager` (o el nombre que prefieras)
+   - **Descripción corta**: `Sistema para gestionar información SAT`
+   - **Descripción larga**: Breve descripción de tu aplicación
+   - **URL de callback/redirect**: Para desarrollo local, usa:
+     ```
+     http://localhost:8000/auth/callback
+     ```
+     O simplemente: `http://localhost:8000`
+   - **Sitio web**: Puedes usar `http://localhost:8000` para desarrollo
+
+4. **Obtener las Credenciales**
+   Después de crear la aplicación, obtendrás:
+   - **App ID** (Client ID)
+   - **Secret Key** (Client Secret)
+   
+   ⚠️ **Guarda el Secret Key de forma segura** - No lo compartas ni lo subas a repositorios públicos
+
+### Paso 2: Flujo de Autenticación OAuth para Localhost
+
+Para una aplicación local/desarrollo, hay tres opciones:
+
+#### Opción A: Script PowerShell Automatizado (⭐ MÁS FÁCIL)
+
+Esta es la forma **más simple y recomendada** para obtener tokens rápidamente:
+
+1. **Descargar el script**
+   - El script `get_ml_tokens.ps1` está incluido en el repositorio
+
+2. **Configurar el script**
+   - Abre `get_ml_tokens.ps1` en un editor de texto
+   - Reemplaza estos valores en la sección de CONFIGURACIÓN:
+     ```powershell
+     $APP_ID = "1234567890"  # Tu App ID de la aplicación
+     $CLIENT_SECRET = "AbCdEfGhIjKlMnOp"  # Tu Client Secret
+     $REDIRECT_URI = "https://google.com"  # Puedes dejarlo así
+     ```
+
+3. **Ejecutar el script**
+   ```powershell
+   # En PowerShell (Windows)
+   .\get_ml_tokens.ps1
+   ```
+
+4. **Seguir las instrucciones del script**
+   - El script mostrará una URL para autorizar
+   - Abrirás la URL en el navegador
+   - Autorizarás la aplicación
+   - Copiarás el código de la URL de redirección
+   - El script intercambiará el código por tokens
+
+5. **Obtener el archivo de tokens**
+   - El script generará `ml_tokens.txt` con:
+     ```
+     ACCESS_TOKEN=APP_USR-xxxx...
+     USER_ID=123456789
+     REFRESH_TOKEN=TG-xxxx...
+     ```
+
+6. **Copiar al archivo .env**
+   - Copia el contenido de `ml_tokens.txt` a tu archivo `.env`
+   - ¡Listo! La aplicación está configurada
+
+**Renovar tokens cuando expiren:**
+```powershell
+# Ejecuta este script para renovar tokens
+.\refresh_ml_tokens.ps1
+```
+
+#### Opción B: Test User Token (Manual)
+
+Esta es una forma simple para desarrollo y testing rápido:
+
+1. **Generar Token de Prueba**
+   - Ve a: https://developers.mercadolibre.com/
+   - Entra a tu aplicación
+   - Busca la sección "Credenciales de prueba" o "Test credentials"
+   - Haz clic en "Generar token de prueba" o "Generate test token"
+   - Selecciona los **scopes necesarios**:
+     - ✅ `read` - Para leer tus publicaciones
+     - ✅ `write` - Para actualizar campos SAT
+     - ✅ `offline_access` - Para mantener el acceso por más tiempo
+
+2. **Copiar el Access Token**
+   - El token generado será algo como: `APP_USR-1234567890123456-111111-abcdef1234567890abcdef1234567890-123456789`
+   - Este token es válido por 6 horas aproximadamente
+
+3. **Obtener tu USER_ID**
+   Puedes obtenerlo de dos formas:
+   
+   **Opción 1 - Desde la API:**
+   ```bash
+   curl -X GET \
+     'https://api.mercadolibre.com/users/me' \
+     -H 'Authorization: Bearer TU_ACCESS_TOKEN'
+   ```
+   
+   **Opción 2 - Desde el portal:**
+   - El USER_ID aparece en el portal de desarrolladores bajo tu perfil
+
+4. **Actualizar el archivo .env**
+   ```env
+   ACCESS_TOKEN=APP_USR-1234567890123456-111111-abcdef1234567890abcdef1234567890-123456789
+   USER_ID=123456789
+   ```
+
+⚠️ **Nota sobre Expiración**: Los tokens de prueba expiran. Cuando veas errores 403 o 401, simplemente genera un nuevo token siguiendo estos mismos pasos.
+
+#### Opción C: Flujo OAuth Completo Manual (Para Producción)
+
+Si necesitas un token de larga duración o para producción, sigue este flujo:
+
+1. **Construir la URL de Autorización**
+   ```
+   https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=TU_APP_ID&redirect_uri=http://localhost:8000/auth/callback&state=random_string
+   ```
+   
+   Parámetros:
+   - `client_id`: Tu App ID
+   - `redirect_uri`: Debe coincidir exactamente con la URL registrada
+   - `state`: String aleatorio para seguridad (opcional para desarrollo)
+
+2. **Autorizar la Aplicación**
+   - Abre la URL en tu navegador
+   - Inicia sesión si es necesario
+   - Autoriza los permisos solicitados
+   - Serás redirigido a: `http://localhost:8000/auth/callback?code=TG-xxxxx&state=random_string`
+
+3. **Intercambiar el Code por un Access Token**
+   
+   Ejecuta este comando (reemplaza los valores):
+   ```bash
+   curl -X POST \
+     'https://api.mercadolibre.com/oauth/token' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "grant_type": "authorization_code",
+       "client_id": "TU_APP_ID",
+       "client_secret": "TU_SECRET_KEY",
+       "code": "TG-xxxxx",
+       "redirect_uri": "http://localhost:8000/auth/callback"
+     }'
+   ```
+   
+   Respuesta:
+   ```json
+   {
+     "access_token": "APP_USR-1234567890123456-111111-abc...",
+     "token_type": "Bearer",
+     "expires_in": 21600,
+     "scope": "read write offline_access",
+     "user_id": 123456789,
+     "refresh_token": "TG-xxxxx..."
+   }
+   ```
+
+4. **Guardar las Credenciales**
+   ```env
+   ACCESS_TOKEN=APP_USR-1234567890123456-111111-abc...
+   USER_ID=123456789
+   REFRESH_TOKEN=TG-xxxxx...
+   ```
+
+5. **Refrescar el Token (cuando expire)**
+   ```bash
+   curl -X POST \
+     'https://api.mercadolibre.com/oauth/token' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "grant_type": "refresh_token",
+       "client_id": "TU_APP_ID",
+       "client_secret": "TU_SECRET_KEY",
+       "refresh_token": "TU_REFRESH_TOKEN"
+     }'
+   ```
+
+### Resumen: ¿Cuál Opción Elegir?
+
+| Escenario | Opción Recomendada |
+|-----------|-------------------|
+| **Forma más fácil y rápida** | ⭐ **Opción A** - Script PowerShell |
+| Desarrollo local / Testing | **Opción A** o **Opción B** |
+| Primera vez usando la API | **Opción A** - Script PowerShell |
+| No tienes PowerShell | **Opción B** - Test User Token |
+| Aplicación de producción | **Opción C** - Flujo OAuth Completo |
+| Necesitas auto-refresh | **Opción A** o **Opción C** |
+
+### Notas Importantes
+
+1. **Scripts PowerShell Incluidos**: 
+   - `get_ml_tokens.ps1`: Obtiene tokens nuevos mediante OAuth
+   - `refresh_ml_tokens.ps1`: Renueva tokens cuando expiran
+   - Ambos generan archivos listos para copiar al .env
+
+2. **Callback en Localhost**: Para desarrollo local, el callback puede ser cualquier URL como `https://google.com`. No necesitas implementar ninguna ruta en tu aplicación con la Opción A (Script PowerShell).
+
+3. **Sin Callback Público**: No necesitas un servidor público ni dominio. Todo el proceso puede hacerse en localhost.
+
+4. **Expiración de Tokens**: 
+   - Los tokens de prueba expiran en ~6 horas
+   - Los tokens OAuth expiran en ~6 horas pero se pueden refrescar
+   - Usa `refresh_token` con el script `refresh_ml_tokens.ps1` para renovar
+
+5. **Scopes Necesarios**:
+   - `read`: Para descargar publicaciones
+   - `write`: Para actualizar campos SAT
+   - `offline_access`: Para tokens de larga duración con refresh
+
+6. **Archivo .env**: Con cualquier opción, necesitas copiar los siguientes valores al archivo `.env`:
+   ```env
+   ACCESS_TOKEN=APP_USR-xxxx...
+   USER_ID=123456789
+   REFRESH_TOKEN=TG-xxxx...  # Opcional pero recomendado
+   ```
 
 ## 🎮 Uso
 
@@ -181,9 +411,37 @@ El archivo descargado incluye las siguientes columnas:
 - Verifica que el archivo `.env` existe en el directorio raíz
 - Asegúrate de que las variables estén correctamente definidas sin espacios
 
-### Error al descargar publicaciones
+### Error 403 Forbidden al descargar publicaciones
+Este error indica que el token de acceso no tiene los permisos necesarios o ha expirado. Solución:
+
+1. **Verifica que tu ACCESS_TOKEN sea válido**:
+   - Los tokens de MercadoLibre expiran después de cierto tiempo
+   - Genera un nuevo token en: https://developers.mercadolibre.com/
+
+2. **Asegúrate de que el token tenga los scopes necesarios**:
+   - `read` - Para leer tus publicaciones
+   - `write` - Para actualizar campos SAT
+   - `offline_access` - Para mantener el acceso
+
+3. **Verifica que el USER_ID sea correcto**:
+   - El USER_ID debe coincidir con el usuario autenticado del token
+   - Puedes verificar tu USER_ID en tu perfil de MercadoLibre
+
+4. **Regenera tu token**:
+   - Ve a https://developers.mercadolibre.com/
+   - Crea una nueva aplicación o usa una existente
+   - Genera un nuevo token con los scopes necesarios
+   - Actualiza el archivo `.env` con el nuevo token
+
+### Error 401 Unauthorized
+- Tu ACCESS_TOKEN es inválido o ha expirado
+- Genera un nuevo token en: https://developers.mercadolibre.com/
+- Actualiza el archivo `.env` con el nuevo token
+
+### Error al descargar publicaciones (otros errores)
 - Verifica que tu ACCESS_TOKEN sea válido y no haya expirado
 - Asegúrate de tener publicaciones activas en tu cuenta
+- Verifica tu conexión a Internet
 
 ### Error al subir archivo
 - Verifica que el archivo tenga las columnas requeridas: `id`, `ClaveProdServ`, `ClaveUnidad`, `Unidad_SAT`, `Descripción_SAT`

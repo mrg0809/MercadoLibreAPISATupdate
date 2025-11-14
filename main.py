@@ -96,6 +96,9 @@ async def download_publications(format: str = "xlsx"):
             media_type="application/octet-stream"
         )
     
+    except PermissionError as e:
+        logger.error(f"Permission error in download endpoint: {e}")
+        raise HTTPException(status_code=403, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
